@@ -93,6 +93,7 @@ q::PokerKeyboard('fold')
 
 return ; === END OF AUTO-EXECUTE SECTION ===
 
+; === Function Defintions ===
 PokerKeyboard(keyName) {
 	gameormenu := scan.PixelPosition(white, beginX, beginY) ? 1 :
 				  scan.PixelPosition(white, rightX, rightY) ? 2 :
@@ -126,7 +127,6 @@ PokerKeyboard(keyName) {
 	}
 }
 
-; === Function Defintions ===
 MainProcess() {
 	static gameState := 'idle'
 	static startPixel := 0xFFFFFF
@@ -144,18 +144,11 @@ MainProcess() {
 		return
 	}
 	ToolTip(gameState)
-	switch gameState {
-		; gonna try updating buffer at 3 second intervals
-		; sample pixel color at x500 y500:
-		
-		; dark gold (A3 74 3D) = action off
-		; mocha (6B 24 10) = action on
-		; white (FF FF FF) = game over, deal new@ 500 500
-		; off white (F7 F7 F7) = deal new hand
-		; 
-		; try startPixel @50 490
-		; 773 93 top right pixel check
-		; white(FFFFFF) = game started
+	switch gameState {	
+		; dark gold (A3 74 3D)
+		; mocha (6B 24 10) 
+		; white (FF FF FF) 
+
 		case 'idle':
 			if scan.PixelPosition(white, beginX, beginY) {
 				gameState := 'scan'
