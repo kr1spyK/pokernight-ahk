@@ -29,26 +29,43 @@ celebPoker := "Poker Night at the Inventory"
 global windowActiveFlag := false
 global pauseProcessFlag := false
 
-global white := 0xFFFFFF
-global mocha := 0x6B2410
-global dGold := 0xA3743D
+global white := 0xFFFFFF ; pure white
+global mocha := 0x6B2410 ; brownish-red like dutch cocoa powder
+global dGold := 0xA3743D ; dark beige/gold
 
 ; Values for 800x600 resolution
-callX := 200, callY := 500
-dealX := 	  dealY := 422
-dnewX :=	  dnewY := 500
-starX := 50,  starY := 490
-foldX := 100, foldY := 500
-beginX := 10, beginY := 102
-endX := 10, endY := 100
+callX := 200, callY := 500 ; call button hitbox
+dealX := 	  dealY := 422 ; white pixel in Deal New Hand element @ end of round
+dnewX :=	  dnewY := 500 ; new game button hitbox @ end of match
+starX := 50,  starY := 490 ; mocha/dgold pixel to determine if action available
+foldX := 100, foldY := 500 ; white pixel in Fold button, edge case for new scan @ action avail.
+beginX := 10, beginY := 102 ; white pixel in top corner UI decoration, determines game active
+endX := 10, endY := 100 ; mocha pixel in top UI bar, appears at end of match results
+
+leftX := 69, leftY := 115
+rightX := 747, rightY := 115
+incX := 530, incY := 500
+decX := 420, decY := 500
+
+dnewBttn := dnewX . ' ' . dnewY
+foldBttn := foldX . ' ' . foldY
+callBttn := callX . ' ' . callY
+raiseBttn := "300 500"
+incBttn := incX . ' ' . incY
+decBttn := decX . ' ' . decY
+lBttn := leftX . ' ' . leftY
+rBttn := rightX . ' ' . rightY
 
 ;TODO: make optimized str8 flush script using image/text recognition
 variance := 0
-scan := ShinsImageScanClass(celebPoker)
-scan.AutoUpdate := 0 ; We want to work on single frames, will update manually.
-scan.Update() ; Initalize frame buffer just in case.
+try {
+	scan := ShinsImageScanClass(celebPoker)
+	scan.AutoUpdate := 0 ; We want to work on single frames, will update manually.
+	scan.Update() ; Initalize frame buffer just in case.
+} catch Error as OutputVar {
+	MsgBox(OutputVar)
+}
 
-; VERSION: regular autoplay script
 ; Main timer
 SetTimer(MainProcess, 100)
 ; Update scan buffer 0.5 second
@@ -58,27 +75,56 @@ SetTimer(FrameBuffer, 500)
 SetTimer(SkipDialogue, 250)
 
 ; Hotkey definitions start
-Pause:: {
-	; Toggle pause state variable
-	global pauseProcessFlag := not pauseProcessFlag
-	if pauseProcessFlag {
-		ToolTip("PNscript paused: Press Pause to continue")
-	} else {
-		if WinExist(celebPoker) {
-			WinActivate(celebPoker)
-			ToolTip("PNscript resumed")
-		} else {
-			pauseProcessFlag := true
-			ToolTip("Error: gamewindow not found! [F4] to exit")
-		}
-	}
-	; Clear tooltip after 2 seconds.
-	SetTimer(() => ToolTip(), -1750)
-}
+Pause::PauseTrigger()
 F4::ExitApp()
+#HotIf WinActive(celebPoker)
+RCtrl::PokerKeyboard('fold')
+Left:: PokerKeyboard('call')
+Right::PokerKeyboard('raise')
+Up::   PokerKeyboard('increase')
+Down:: PokerKeyboard('decrease')
+
+w::PokerKeyboard('increase')
+s::PokerKeyboard('decrease')
+a::PokerKeyboard('call')
+d::PokerKeyboard('raise')
+q::PokerKeyboard('fold')
+#HotIf 
 
 return ; === END OF AUTO-EXECUTE SECTION ===
 
+PokerKeyboard(keyName) {
+	gameormenu := scan.PixelPosition(white, beginX, beginY) ? 1 :
+				  scan.PixelPosition(white, rightX, rightY) ? 2 :
+				  0
+	if gameormenu == 0
+		return
+	switch keyName {
+		case 'increase':
+			if gameormenu == 1
+				Click(incBttn)
+			else
+				Click(rBttn)
+		case 'decrease':
+			if gameormenu == 1
+				Click(decBttn)
+			else
+				Click(lBttn)
+		case 'fold': 
+			if gameormenu == 1
+				Click(foldBttn)
+		case 'call': 
+			if gameormenu == 1
+				Click(callBttn)
+			else
+				Click(lBttn)
+		case 'raise':
+			if gameormenu == 1
+				Click(raiseBttn)
+			else
+				Click(rBttn) 
+	}
+}
 
 ; === Function Defintions ===
 MainProcess() {
@@ -126,7 +172,7 @@ MainProcess() {
 				gameState := 'roundEnd'
 				return
 			}
-			if scan.PixelPosition(dGold, starX, starY, 10) {
+			if scan.PixelPosition(dGold, starX, starY) {
 				gameState := 'cardsIdle'
 				return
 			}
@@ -134,18 +180,12 @@ MainProcess() {
 				gameState := 'cardsIdle'
 				return
 			}
-			; startPixel := scan.GetPixel(starX, starY)
-			; ToolTip Format("{:X}", startPixel)
-			
-			; if startPixel == mocha or startPixel == dGold {
-			; 	gameState := 'start'
-			; 	return
-			; }
+
 		case 'cardsIdle':
 			if not scan.PixelPosition(white, beginX, beginY) {
 				gameState := 'idle'
 			}
-			if scan.PixelPosition(mocha, starX, starY, 10) {
+			if scan.PixelPosition(mocha, starX, starY) {
 				gameState := 'action'
 			} else if scan.PixelPosition(white, dealX, dealY) {
 				gameState := 'roundEnd'
@@ -158,7 +198,7 @@ MainProcess() {
 			;     Click(foldX, foldY)
 			;	  gameState := 'folded'
 			; }
-			Click(callX, callY)
+			Click(callBttn)
 			gameState := 'scan'
 
 		case 'folded':
@@ -166,36 +206,44 @@ MainProcess() {
 			; gameState := 'roundEnd'
 
 		case 'roundEnd':
-			Click(dnewX, dnewY)
+			Click(dnewBttn)
 			gameState := 'scan'
 		default:
 			MsgBox Format("undefined gameState: ", gameState)
 	}
-	
-}
-
-FrameBuffer() {
-	scan.Update()
 }
 
 SkipDialogue() {
-	; Only runs when cursor is over Active window.
-	; pokerHWID := WinExist(celebPoker)
-
-	; if not pokerHWID
-	; 	global pauseProcessFlag := true
-
-	; MouseGetPos(&x, &y, &HwndUnderMouse)
-
-	; if windowActiveFlag and HwndUnderMouse == pokerHWID
-	; 	Click('R')
-	;------------------------------------------------------
-
 	; ControlClick to free the mouse for usage
 	; THIS WILL FORCE THE GAME TO RUN IN BACKGROUND
 	try
 		ControlClick(, celebPoker,, "R")
 	catch TargetError as te
 		; game window does not exist, silently ignore
+		return
+}
+
+PauseTrigger() {
+	; Toggle pause state variable
+	global pauseProcessFlag := not pauseProcessFlag
+	if pauseProcessFlag {
+		ToolTip("PNscript paused: Press Pause to continue")
+	} else {
+		if WinExist(celebPoker) {
+			WinActivate(celebPoker)
+			ToolTip("PNscript resumed")
+		} else {
+			pauseProcessFlag := true
+			ToolTip("Error: gamewindow not found! [F4] to exit")
+		}
+	}
+	; Clear tooltip after 2 seconds.
+	SetTimer(() => ToolTip(), -1750)
+}
+
+FrameBuffer() {
+	try
+		scan.Update()
+	catch Error  
 		return
 }
