@@ -75,9 +75,12 @@ SetTimer(FrameBuffer, 500)
 SetTimer(SkipDialogue, 250)
 
 ; Hotkey definitions start
-Pause::PauseTrigger()
 F4::ExitApp()
 #HotIf WinActive(celebPoker)
+$\:: {
+	PauseTrigger()
+	KeyWait('\')
+}
 RCtrl::PokerKeyboard('fold')
 Left:: PokerKeyboard('call')
 Right::PokerKeyboard('raise')
@@ -88,7 +91,7 @@ w::PokerKeyboard('increase')
 s::PokerKeyboard('decrease')
 a::PokerKeyboard('call')
 d::PokerKeyboard('raise')
-q::PokerKeyboard('fold')
+f::PokerKeyboard('fold')
 #HotIf 
 
 return ; === END OF AUTO-EXECUTE SECTION ===
